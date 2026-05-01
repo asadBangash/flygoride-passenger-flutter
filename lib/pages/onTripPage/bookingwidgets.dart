@@ -2196,16 +2196,16 @@ class _CreateRequestBottomSheetState extends State<CreateRequestBottomSheet> {
                                               return const SuccessPopUp();
                                             });
 
-                                        FirebaseDatabase.instance
-                                            .ref()
-                                            .child(
-                                                'bid-meta/${userRequestData["id"]}')
-                                            .update({
-                                          'user_id':
-                                              userDetails['id'].toString(),
-                                          'price': yourAmount.text,
-                                          'g': g,
-                                          'user_name': userDetails['name'],
+                                        if (firebaseInitialized) {
+                                          FirebaseDatabase.instance
+                                              .ref()
+                                              .child('bid-meta/${userRequestData["id"]}')
+                                              .update({
+                                            'user_id':
+                                                userDetails['id'].toString(),
+                                            'price': yourAmount.text,
+                                            'g': g,
+                                            'user_name': userDetails['name'],
                                           'updated_at': ServerValue.timestamp,
                                           'user_img':
                                               userDetails['profile_picture'],
@@ -2267,17 +2267,17 @@ class _CreateRequestBottomSheetState extends State<CreateRequestBottomSheet> {
                                       } else {
                                         // ignore: use_build_context_synchronously
                                         Navigator.pop(context);
-                                        FirebaseDatabase.instance
-                                            .ref()
-                                            .child(
-                                                'bid-meta/${userRequestData["id"]}')
-                                            .update({
-                                          'user_id':
-                                              userDetails['id'].toString(),
-                                          'price': userRequestData[
-                                              'offerred_ride_fare'],
-                                          'g': g,
-                                          'user_name': userDetails['name'],
+                                        if (firebaseInitialized) {
+                                          FirebaseDatabase.instance
+                                              .ref()
+                                              .child('bid-meta/${userRequestData["id"]}')
+                                              .update({
+                                            'user_id':
+                                                userDetails['id'].toString(),
+                                            'price': userRequestData[
+                                                'offerred_ride_fare'],
+                                            'g': g,
+                                            'user_name': userDetails['name'],
                                           'updated_at': ServerValue.timestamp,
                                           'user_img':
                                               userDetails['profile_picture'],
@@ -2333,7 +2333,9 @@ class _CreateRequestBottomSheetState extends State<CreateRequestBottomSheet> {
                                       iscondition = false;
                                     });
                                   }
-                                },
+                                }
+                              }
+                            },
                                 text: languages[choosenLanguage]
                                     ['text_create_request'],
                                 // color: (yourAmount.text.isNotEmpty)

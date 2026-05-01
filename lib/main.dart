@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'functions/functions.dart';
 import 'functions/notifications.dart';
@@ -5,6 +6,7 @@ import 'pages/loadingPage/loadingpage.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/services.dart';
 import 'translations/translation.dart';
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,11 +22,12 @@ void main() async {
   registerFlygorideLanguageFallbacks();
 
   try {
-    await Firebase.initializeApp();
-    firebaseInitialized = true;
+    // Skip Firebase initialization for now to focus on UI development
+    // await Firebase.initializeApp();
+    debugPrint('Firebase initialization skipped for UI development');
   } catch (e) {
     debugPrint(
-        'Firebase.initializeApp failed (add android/app/google-services.json): $e');
+        'Firebase.initializeApp failed (add firebase config or web FirebaseOptions): $e');
   }
 
   if (firebaseInitialized) {

@@ -231,6 +231,10 @@ bool phoneAuthCheck = false;
 dynamic credentials;
 
 phoneAuth(String phone) async {
+  if (!firebaseInitialized) {
+    debugPrint('Skipping phone auth - Firebase not initialized');
+    return;
+  }
   try {
     credentials = null;
     await FirebaseAuth.instance.verifyPhoneNumber(
@@ -271,6 +275,12 @@ getLocalData() async {
     internet = false;
   } else {
     internet = true;
+  }
+
+  // Skip Firebase operations when not initialized
+  if (!firebaseInitialized) {
+    debugPrint('Skipping Firebase operations - Firebase not initialized');
+    return;
   }
   try {
     if (pref.containsKey('lastNotification')) {
@@ -352,8 +362,11 @@ registerUser() async {
   bearerToken.clear();
   dynamic result;
   try {
-    var token = await FirebaseMessaging.instance.getToken();
-    var fcm = token.toString();
+    String fcm = '';
+    if (firebaseInitialized) {
+      final token = await FirebaseMessaging.instance.getToken();
+      fcm = token?.toString() ?? '';
+    }
     final response =
         http.MultipartRequest('POST', Uri.parse('${url}api/v1/user/register'));
 
@@ -391,14 +404,16 @@ registerUser() async {
           token: jsonVal['access_token'].toString()));
       pref.setString('Bearer', bearerToken[0].token);
       await getUserDetails();
-      if (platform == TargetPlatform.android && package != null) {
-        await FirebaseDatabase.instance
-            .ref()
-            .update({'user_package_name': package.packageName.toString()});
-      } else if (package != null) {
-        await FirebaseDatabase.instance
-            .ref()
-            .update({'user_bundle_id': package.packageName.toString()});
+      if (firebaseInitialized) {
+        if (platform == TargetPlatform.android && package != null) {
+          await FirebaseDatabase.instance
+              .ref()
+              .update({'user_package_name': package.packageName.toString()});
+        } else if (package != null) {
+          await FirebaseDatabase.instance
+              .ref()
+              .update({'user_bundle_id': package.packageName.toString()});
+        }
       }
       result = 'true';
     } else if (respon.statusCode == 422) {
@@ -459,6 +474,14 @@ updateReferral() async {
 
 otpCall() async {
   dynamic result;
+  if (!firebaseInitialized) {
+    debugPrint('Skipping OTP call - Firebase not initialized');
+    return 'no firebase';
+  }
+  if (!firebaseInitialized) {
+    debugPrint('Skipping OTP call - Firebase not initialized');
+    return 'no firebase';
+  }
   try {
     var otp = await FirebaseDatabase.instance.ref().child('call_FB_OTP').get();
     result = otp;
@@ -604,12 +627,14 @@ userLogin(number, login, password, isOtp) async {
   dynamic result;
   try {
     String fcmToken = '';
-    try {
-      final tok = await FirebaseMessaging.instance.getToken();
-      if (tok != null && tok.isNotEmpty) {
-        fcmToken = tok;
-      }
-    } catch (_) {}
+    if (firebaseInitialized) {
+      try {
+        final tok = await FirebaseMessaging.instance.getToken();
+        if (tok != null && tok.isNotEmpty) {
+          fcmToken = tok;
+        }
+      } catch (_) {}
+    }
 
     final Map<String, dynamic> body = {
       if (isOtp == false && login == 0) 'mobile': number,
@@ -2256,7 +2281,7 @@ cancelRequest() async {
         body: jsonEncode({'request_id': userRequestData['id']}));
     if (response.statusCode == 200) {
       userCancelled = true;
-      if (userRequestData['is_bid_ride'] == 1) {
+      if (userRequestData['is_bid_ride'] == 1 && firebaseInitialized) {
         FirebaseDatabase.instance
             .ref('bid-meta/${userRequestData["id"]}')
             .remove();
@@ -2559,6 +2584,11 @@ getSosData(lat, lng) async {
 //sos admin notification
 
 notifyAdmin() async {
+  if (!firebaseInitialized) {
+    debugPrint('Skipping admin notification - Firebase not initialized');
+    return true;
+  }
+
   var db = FirebaseDatabase.instance.ref();
   try {
     await db.child('SOS/${userRequestData['id']}').update({
@@ -2630,9 +2660,11 @@ sendMessage(chat) async {
             jsonEncode({'request_id': userRequestData['id'], 'message': chat}));
     if (response.statusCode == 200) {
       await getCurrentMessages();
-      FirebaseDatabase.instance
-          .ref('requests/${userRequestData['id']}')
-          .update({'message_by_user': chatList.length});
+      if (firebaseInitialized) {
+        FirebaseDatabase.instance
+            .ref('requests/${userRequestData['id']}')
+            .update({'message_by_user': chatList.length});
+      }
       result = 'success';
     } else if (response.statusCode == 401) {
       result = 'logout';
@@ -2669,6 +2701,12 @@ messageSeen() async {
 dynamic chatStream;
 String unSeenChatCount = '0';
 streamAdminchat() async {
+  // Skip Firebase operations when not initialized
+  if (!firebaseInitialized) {
+    debugPrint('Skipping Firebase chat stream - Firebase not initialized');
+    return;
+  }
+
   chatStream = FirebaseDatabase.instance
       .ref()
       .child(
@@ -3718,6 +3756,11 @@ streamRequest() {
   rideStreamUpdate = null;
   rideStreamStart = null;
 
+  if (!firebaseInitialized) {
+    debugPrint('Skipping request stream - Firebase not initialized');
+    return;
+  }
+
   requestStreamStart = FirebaseDatabase.instance
       .ref('request-meta')
       .child(userRequestData['id'])
@@ -3746,6 +3789,12 @@ streamRide() {
   requestStreamEnd = null;
   rideStreamUpdate = null;
   rideStreamStart = null;
+
+  if (!firebaseInitialized) {
+    debugPrint('Skipping ride stream - Firebase not initialized');
+    return;
+  }
+
   rideStreamUpdate = FirebaseDatabase.instance
       .ref('requests/${userRequestData['id']}')
       .onChildChanged
@@ -4037,10 +4086,12 @@ paymentMethod(payment) async {
                           : 4
             }));
     if (response.statusCode == 200) {
-      FirebaseDatabase.instance
-          .ref('requests')
-          .child(userRequestData['id'])
-          .update({'modified_by_user': ServerValue.timestamp});
+      if (firebaseInitialized) {
+        FirebaseDatabase.instance
+            .ref('requests')
+            .child(userRequestData['id'])
+            .update({'modified_by_user': ServerValue.timestamp});
+      }
       ismulitipleride = true;
       await getUserDetails(id: userRequestData['id']);
       result = 'success';
@@ -4247,6 +4298,12 @@ List outStationDriver = [];
 //push notification
 dynamic outStationPushStream;
 outStationPush() async {
+  // Skip Firebase operations when not initialized
+  if (!firebaseInitialized) {
+    debugPrint('Skipping Firebase outstation push - Firebase not initialized');
+    return;
+  }
+
   outStationPushStream = FirebaseDatabase.instance
       .ref()
       .child('bid-meta')

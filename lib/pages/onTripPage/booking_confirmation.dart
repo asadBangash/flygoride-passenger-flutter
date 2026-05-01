@@ -737,11 +737,17 @@ class _BookingConfirmationState extends State<BookingConfirmation>
     var lower = geo.encode(lowerLon, lowerLat);
     var higher = geo.encode(greaterLon, greaterLat);
 
-    var fdb = FirebaseDatabase.instance
-        .ref('drivers')
-        .orderByChild('g')
-        .startAt(lower)
-        .endAt(higher);
+    dynamic fdb;
+    if (firebaseInitialized) {
+      fdb = FirebaseDatabase.instance
+          .ref('drivers')
+          .orderByChild('g')
+          .startAt(lower)
+          .endAt(higher);
+    } else {
+      debugPrint('Skipping Firebase driver query - Firebase not initialized');
+      fdb = null;
+    }
 
     popFunction() {
       if (userRequestData.isNotEmpty &&
@@ -1373,11 +1379,13 @@ class _BookingConfirmationState extends State<BookingConfirmation>
                         return StreamBuilder<DatabaseEvent>(
                             stream: (userRequestData['driverDetail'] != null &&
                                     pinLocationIcon != null)
-                                ? FirebaseDatabase.instance
-                                    .ref(
-                                        'drivers/driver_${userRequestData['driverDetail']['data']['id']}')
-                                    .onValue
-                                    .asBroadcastStream()
+                                ? (firebaseInitialized
+                                  ? FirebaseDatabase.instance
+                                      .ref(
+                                          'drivers/driver_${userRequestData['driverDetail']['data']['id']}')
+                                      .onValue
+                                      .asBroadcastStream()
+                                  : null)
                                 : null,
                             builder:
                                 (context, AsyncSnapshot<DatabaseEvent> event) {
@@ -5700,13 +5708,15 @@ class _BookingConfirmationState extends State<BookingConfirmation>
                                           ? Positioned(
                                               bottom: 0,
                                               child: StreamBuilder<Object>(
-                                                  stream: FirebaseDatabase
-                                                      .instance
-                                                      .ref()
-                                                      .child(
-                                                          'bid-meta/${userRequestData["id"]}')
-                                                      .onValue
-                                                      .asBroadcastStream(),
+                                                  stream: firebaseInitialized
+                                                      ? FirebaseDatabase
+                                                          .instance
+                                                          .ref()
+                                                          .child(
+                                                              'bid-meta/${userRequestData["id"]}')
+                                                          .onValue
+                                                          .asBroadcastStream()
+                                                      : null,
                                                   builder: (context,
                                                       AsyncSnapshot event) {
                                                     List driverList = [];
@@ -5909,9 +5919,14 @@ class _BookingConfirmationState extends State<BookingConfirmation>
                                                                                             var val = DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(driverList[key]['bid_time'])).inSeconds;
                                                                                             var calcDistance = calculateDistance(userRequestData['pick_lat'], userRequestData['pick_lng'], double.parse(driverList[key]['lat'].toString()), double.parse(driverList[key]['lng'].toString()));
                                                                                             if (int.parse(val.toString()) >= int.parse(userDetails['maximum_time_for_find_drivers_for_bitting_ride'].toString()) + 5) {
-                                                                                              FirebaseDatabase.instance.ref().child('bid-meta/${userRequestData["id"]}/drivers/driver_${driverList[key]["driver_id"]}').update({
-                                                                                                "is_rejected": 'by_user'
-                                                                                              });
+                                                                                              if (firebaseInitialized) {
+                                                                                                FirebaseDatabase.instance
+                                                                                                    .ref()
+                                                                                                    .child('bid-meta/${userRequestData["id"]}/drivers/driver_${driverList[key]["driver_id"]}')
+                                                                                                    .update({
+                                                                                                  "is_rejected": 'by_user'
+                                                                                                });
+                                                                                              }
                                                                                             }
                                                                                             return Container(
                                                                                               margin: EdgeInsets.only(bottom: media.width * 0.025),
@@ -6013,8 +6028,11 @@ class _BookingConfirmationState extends State<BookingConfirmation>
                                                                                                                   'accepted_ride_fare': driverList[key]['price'].toString(),
                                                                                                                   'offerred_ride_fare': rideList['price'],
                                                                                                                 }));
-                                                                                                                if (val == 'success') {
-                                                                                                                  await FirebaseDatabase.instance.ref().child('bid-meta/${userRequestData["id"]}').remove();
+                                                                                                                if (val == 'success' && firebaseInitialized) {
+                                                                                                                  await FirebaseDatabase.instance
+                                                                                                                      .ref()
+                                                                                                                      .child('bid-meta/${userRequestData["id"]}')
+                                                                                                                      .remove();
                                                                                                                 }
                                                                                                                 setState(() {
                                                                                                                   isLoading = false;
@@ -6032,7 +6050,12 @@ class _BookingConfirmationState extends State<BookingConfirmation>
                                                                                                                 setState(() {
                                                                                                                   isLoading = true;
                                                                                                                 });
-                                                                                                                await FirebaseDatabase.instance.ref().child('bid-meta/${userRequestData["id"]}/drivers/driver_${driverList[key]["driver_id"]}').update({"is_rejected": 'by_user'});
+                                                                                                                if (firebaseInitialized) {
+                                                                                                                  await FirebaseDatabase.instance
+                                                                                                                      .ref()
+                                                                                                                      .child('bid-meta/${userRequestData["id"]}/drivers/driver_${driverList[key]["driver_id"]}')
+                                                                                                                      .update({"is_rejected": 'by_user'});
+                                                                                                                }
                                                                                                                 setState(() {
                                                                                                                   isLoading = false;
                                                                                                                 });
@@ -6264,21 +6287,23 @@ class _BookingConfirmationState extends State<BookingConfirmation>
                                                                             isLoading =
                                                                                 true;
                                                                           });
-                                                                          await FirebaseDatabase
-                                                                              .instance
-                                                                              .ref()
-                                                                              .child('bid-meta/${userRequestData["id"]}')
-                                                                              .update({
-                                                                            'price':
-                                                                                updateAmount.text,
-                                                                            'updated_at':
-                                                                                ServerValue.timestamp,
-                                                                          });
-                                                                          await FirebaseDatabase
-                                                                              .instance
-                                                                              .ref()
-                                                                              .child('bid-meta/${userRequestData["id"]}/drivers')
-                                                                              .remove();
+                                                                          if (firebaseInitialized) {
+                                                                            await FirebaseDatabase
+                                                                                .instance
+                                                                                .ref()
+                                                                                .child('bid-meta/${userRequestData["id"]}')
+                                                                                .update({
+                                                                              'price':
+                                                                                  updateAmount.text,
+                                                                              'updated_at':
+                                                                                  ServerValue.timestamp,
+                                                                            });
+                                                                            await FirebaseDatabase
+                                                                                .instance
+                                                                                .ref()
+                                                                                .child('bid-meta/${userRequestData["id"]}/drivers')
+                                                                                .remove();
+                                                                          }
                                                                           setState(
                                                                               () {
                                                                             updateAmount.clear();

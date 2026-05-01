@@ -445,6 +445,11 @@ class _MapsState extends State<Maps>
   var higher;
   var fdb;
   fdbfun() {
+    if (!firebaseInitialized) {
+      debugPrint('Skipping Firebase Database query: Firebase is not initialized.');
+      return;
+    }
+
     lowerLat = center.latitude - (lat * 1.24);
     lowerLon = center.longitude - (lon * 1.24);
 
@@ -764,14 +769,16 @@ class _MapsState extends State<Maps>
                                                     width: media.width * 1,
                                                     child: StreamBuilder<
                                                         DatabaseEvent>(
-                                                      stream: FirebaseDatabase
-                                                          .instance
-                                                          .ref('drivers')
-                                                          .orderByChild('g')
-                                                          .startAt(lower)
-                                                          .endAt(higher)
-                                                          .onValue
-                                                          .asBroadcastStream(),
+                                                      stream: firebaseInitialized
+                                                          ? FirebaseDatabase
+                                                              .instance
+                                                              .ref('drivers')
+                                                              .orderByChild('g')
+                                                              .startAt(lower)
+                                                              .endAt(higher)
+                                                              .onValue
+                                                              .asBroadcastStream()
+                                                          : null,
                                                       builder: (context,
                                                           AsyncSnapshot<
                                                                   DatabaseEvent>
@@ -1265,7 +1272,12 @@ class _MapsState extends State<Maps>
                                                                               lower = geo.encode(lowerLon, lowerLat);
                                                                               higher = geo.encode(greaterLon, greaterLat);
 
-                                                                              fdb = FirebaseDatabase.instance.ref('drivers').orderByChild('g').startAt(lower).endAt(higher);
+                                                                              if (firebaseInitialized) {
+      fdb = FirebaseDatabase.instance.ref('drivers').orderByChild('g').startAt(lower).endAt(higher);
+    } else {
+      debugPrint('Skipping Firebase driver query - Firebase not initialized');
+      return;
+    }
                                                                               if (val != '') {
                                                                                 setState(() {
                                                                                   if (addressList.where((element) => element.type == 'pickup').isNotEmpty) {

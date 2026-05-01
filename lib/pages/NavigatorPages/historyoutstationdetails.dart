@@ -44,11 +44,13 @@ class _OutStationDetailsState extends State<OutStationDetails> {
 
     return Material(
       child: StreamBuilder<Object>(
-          stream: FirebaseDatabase.instance
-              .ref()
-              .child('bid-meta/${widget.requestId}')
-              .onValue
-              .asBroadcastStream(),
+          stream: firebaseInitialized
+              ? FirebaseDatabase.instance
+                  .ref()
+                  .child('bid-meta/${widget.requestId}')
+                  .onValue
+                  .asBroadcastStream()
+              : null,
           builder: (context, AsyncSnapshot event) {
             List driverList = [];
             Map rideList = {};
@@ -765,7 +767,12 @@ class _OutStationDetailsState extends State<OutStationDetails> {
                                                                                           'offerred_ride_fare': rideList['price'],
                                                                                         }));
                                                                                         if (val == 'success') {
-                                                                                          await FirebaseDatabase.instance.ref().child('bid-meta/${widget.requestId}').remove();
+                                                                                          if (firebaseInitialized) {
+                                                                                            await FirebaseDatabase.instance
+                                                                                                .ref()
+                                                                                                .child('bid-meta/${widget.requestId}')
+                                                                                                .remove();
+                                                                                          }
 
                                                                                           var res = await outStationListFun();
                                                                                           if (res == 'success') {
@@ -790,9 +797,14 @@ class _OutStationDetailsState extends State<OutStationDetails> {
                                                                                         setState(() {
                                                                                           _isLoading = true;
                                                                                         });
-                                                                                        await FirebaseDatabase.instance.ref().child('bid-meta/${widget.requestId}/drivers/driver_${driverList[key]["driver_id"]}').update({
-                                                                                          "is_rejected": 'by_user'
-                                                                                        });
+                                                                                        if (firebaseInitialized) {
+                                                                                          await FirebaseDatabase.instance
+                                                                                              .ref()
+                                                                                              .child('bid-meta/${widget.requestId}/drivers/driver_${driverList[key]["driver_id"]}')
+                                                                                              .update({
+                                                                                            "is_rejected": 'by_user'
+                                                                                          });
+                                                                                        }
                                                                                         setState(() {
                                                                                           _isLoading = false;
                                                                                         });

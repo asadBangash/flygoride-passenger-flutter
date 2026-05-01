@@ -8,7 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'functions.dart';
 
 // create an instance
-FirebaseMessaging messaging = FirebaseMessaging.instance;
+FirebaseMessaging? messaging;
 FlutterLocalNotificationsPlugin fltNotification =
     FlutterLocalNotificationsPlugin();
 FlutterLocalNotificationsPlugin rideNotification =
@@ -49,6 +49,11 @@ var iosInit = const DarwinInitializationSettings(
 var initSetting = InitializationSettings(android: androiInit, iOS: iosInit);
 
 Future<void> initMessaging() async {
+  if (!firebaseInitialized) {
+    debugPrint('Skipping messaging init - Firebase not initialized');
+    return;
+  }
+
   await fltNotification.initialize(initSetting);
 
   await FirebaseMessaging.instance.requestPermission();
