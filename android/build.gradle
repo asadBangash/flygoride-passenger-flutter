@@ -1,0 +1,61 @@
+// AGP 8+ requires a `namespace` in every Android module; mirror manifest package.
+subprojects { subproject ->
+    subproject.pluginManager.withPlugin("com.android.library", {
+        def ext = subproject.extensions.findByName("android")
+        if (ext != null) {
+            def current = ext.namespace
+            if (current == null || current.isEmpty()) {
+                def mFile = subproject.file("src/main/AndroidManifest.xml")
+                if (mFile.exists()) {
+                    def t = mFile.getText("UTF-8")
+                    def mat = (t =~ /package="([^"]+)"/)
+                    if (mat.find()) {
+                        ext.namespace = mat.group(1)
+                    }
+                }
+            }
+        }
+    })
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+// Align JVM targets and compileSdk across app and plugins (matches driver app).
+subprojects { subproject ->
+    subproject.afterEvaluate {
+        def androidExt = subproject.extensions.findByName('android')
+        if (androidExt != null) {
+            if (androidExt.hasProperty('compileSdk')) {
+                androidExt.compileSdk = 35
+            } else if (androidExt.hasProperty('compileSdkVersion')) {
+                androidExt.compileSdkVersion = 35
+            }
+            androidExt.compileOptions {
+                sourceCompatibility JavaVersion.VERSION_17
+                targetCompatibility JavaVersion.VERSION_17
+            }
+        }
+        subproject.tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+            kotlinOptions {
+                jvmTarget = '17'
+            }
+        }
+    }
+}
+
+rootProject.buildDir = '../build'
+subprojects {
+    project.buildDir = "${rootProject.buildDir}/${project.name}"
+}
+subprojects {
+    project.evaluationDependsOn(':app')
+}
+
+tasks.register("clean", Delete) {
+    delete rootProject.buildDir
+}
